@@ -1,0 +1,1033 @@
+A Computer Vision Framework Combining Machine
+Learning and Deep Learning for Multimodal Triage
+of Stroke, Hemorrhage, and Mass Effect on Brain CT
+                                          and MRI
+
+                            AI Medical Imaging Research Project
+                                         Article paper draft
+
+                                          September 2026
+
+
+                                              Abstract
+
+      Acute stroke, intracranial hemorrhage, and traumatic brain injury require prompt assess-
+   ment because delays in recognizing critical findings can affect treatment decisions and patient
+   outcomes. However, timely interpretation of brain imaging may be difficult in resource-
+   constrained settings where radiology expertise, specialist coverage, and diagnostic infras-
+   tructure are limited. This article presents the design of a computer-vision triage framework
+   for brain computed tomography (CT) and magnetic resonance imaging (MRI), bringing data
+   science and analytics together with clinical medicine and surgery. Its objective is to support
+   the prioritization of stroke, hemorrhage, mass effect, and apparently normal studies without
+   replacing professional diagnosis. The workflow accepts CT images, MRI images, or both
+   CT and MRI images within a single study, while retaining the modality assigned to each
+   image. It applies documented image validation, modality-aware preprocessing, and quantita-
+   tive feature extraction, and defines a comparative modeling plan for feature-based machine
+   learning and convolutional-neural-network deep learning. The application is designed to
+   combine image-derived screening impressions with clinician-entered presenting history and
+   examination information, then present structured findings, confidence, priority, and differ-
+   ential considerations for qualified review. Evaluation is specified using patient-level data
+   partitions and clinically relevant measures of discrimination, sensitivity, specificity, F1-score,
+   area under the receiver-operating-characteristic curve, calibration, subgroup performance,
+   and robustness across modalities, sites, scanners, and acquisition conditions. The framework
+   also incorporates explainability, privacy safeguards, data governance, human oversight, and
+   implementation considerations for African and other settings with constrained resources.
+   The current application is a research prototype, and no clinical performance or outcome
+   benefit is claimed. Such claims require representative, appropriately annotated datasets,
+   external validation, and prospective workflow evaluation. This work therefore contributes a
+   reproducible design and validation pathway for responsible AI-assisted neuroimaging triage.
+
+
+
+                                                   1
+AI-assisted CT and MRI triage                                                       Article paper
+
+
+Keywords: brain imaging; computed tomography; magnetic resonance imaging; stroke; hem-
+orrhage; mass effect; deep learning; explainable AI; triage; clinical decision support
+
+
+
+
+                                                2
+AI-assisted CT and MRI triage                                                           Article paper
+
+
+1 Introduction                                          3. Clinician-oriented outputs for stroke, hem-
+                                                          orrhage, mass effect, and normal categories.
+Stroke is a leading cause of death and disability
+                                                        4. A reproducible evaluation and governance
+worldwide, and the clinical value of treatment
+                                                          plan.
+is strongly time dependent (WHO 2022; Feigin
+et al. 2022; Campbell and Khatri 2020). Emer- 2 Clinical and Research Background:
+gency neuroimaging is therefore not merely a    Literature Review
+diagnostic activity; it is also a prioritization
+                                                        2.1 Clinical context and imaging roles
+mechanism. Non-contrast CT is widely avail-
+able and fast, while MRI supplies complemen- Ischemic stroke results from interrupted cere-
+tary information about tissue injury, diffusion bral perfusion, while hemorrhagic stroke involves
+restriction, perfusion, and lesion age (Powers et bleeding within or around the brain. Trau-
+al. 2019; Wintermark et al. 2013; Chalela et al. matic brain injury can cause hemorrhage, edema,
+2007). Intracranial hemorrhage and mass effect contusion, and secondary mass effect. Mass ef-
+represent particularly important urgent find- fect describes displacement or compression of
+ings because they may require immediate neu- intracranial structures and may arise from sev-
+rosurgical, neurocritical-care, or blood-pressure eral underlying conditions. These findings may
+management decisions (Greenberg et al. 2022; coexist; therefore, a four-class label is a useful
+Hemphill et al. 2001).                       prototype simplification, not a complete repre-
+
+  Radiology workloads, unequal access to sub- sentation of clinical diagnosis.
+specialty expertise, and the increasing volume  Non-contrast CT is fast and widely available
+
+of imaging create a practical need for computer- in emergency care and is central to identify-
+assisted triage. A triage model does not need ing acute intracranial blood. MRI, including
+to make the final diagnosis to be useful: it may diffusion-weighted sequences, can detect early
+identify studies that should be reviewed sooner, ischemic tissue injury and provide complemen-
+summarize image-derived evidence, and make tary characterization, but acquisition time, scan-
+the reasoning pathway auditable. However, clin- ner access, and patient stability affect its use
+ical deployment requires careful separation of (Chalela et al. 2007; Warach et al. 1992; Kid-
+screening from diagnosis, explicit uncertainty, well et al. 2004; Wintermark et al. 2013). The
+robust external validation, and human over- clinical implication is that CT and MRI should
+sight (Topol 2019; Kelly et al. 2019; Holzinger be treated as complementary, modality-specific
+et al. 2019).                                           inputs. A model must not infer that the ab-
+
+  This article develops a combined CT–MRI sence of a finding on one modality guarantees
+research and software framework. Its contribu- its absence on the other.
+tions are:                                              2.2 Literature review approach
+1. A single workflow that retains modality iden- This narrative review synthesizes clinical imag-
+   tity for every uploaded image.                ing guidance, representative neuroimaging-AI
+2. A comparison between feature-based machine studies, foundational computer-vision methods,
+   learning and image-based deep learning.              and work on explainability and clinical imple-
+
+                                                    3
+AI-assisted CT and MRI triage                                                           Article paper
+
+
+mentation. The cited works are used to identify 2.5 Why this thesis is important
+methods and research gaps; this is not a regis- The thesis is important for three connected rea-
+tered systematic review or a quantitative meta- sons. Clinically, it focuses on prioritizing time-
+analysis. Study selection for a final disserta- sensitive brain findings while keeping a profes-
+tion should be documented with search dates, sional responsible for final interpretation. Method-
+databases, exact query strings, inclusion crite- ologically, it compares interpretable engineered
+ria, and screening counts. Google Scholar and features with image-based deep-learning approaches
+ResearchGate are useful discovery and access and requires patient-level and external evalu-
+services, but study metadata and claims should ation rather than relying on accuracy alone.
+be verified against the publisher record or bib- From a data-science and health-systems per-
+liographic database before submission.           spective, it makes modality identity, data qual-
+2.3 Representative prior work                          ity, uncertainty, governance, and resource con-
+
+Earlier research demonstrates that deep-learning straints explicit design variables. The study’s
+systems can detect selected urgent findings in contribution is a reproducible evaluation path-
+head CT, while broader medical-imaging re- way and a testable prototype, not a claim that
+views describe the strengths and limitations of the current system is ready for diagnosis or has
+convolutional models (Titano et al. 2018; Chil- already improved outcomes.
+amkurthy et al. 2018; Kuo et al. 2019; Arbab- 3 Problem Statement and Objectives
+shirani et al. 2018; Litjens et al. 2017; Shen et
+                                                   3.1 Problem statement
+al. 2017). These studies establish feasibility for
+defined tasks; they do not, by themselves, val- Many existing studies address a single modal-
+idate the present four-label, CT–MRI, mixed- ity or a single finding. A practical emergency
+study prototype or demonstrate benefit in the tool must handle heterogeneous studies, pre-
+intended local setting. Table 1 summarizes the serve CT/MRI provenance, and communicate
+relevance and remaining gap without treating its output in language that supports review.
+results from different datasets as directly com- The problem addressed here is the design of an
+parable.                                         auditable, multimodal, multi-class triage sys-
+                                                       tem for stroke, hemorrhage, mass effect, and
+2.4 Evidence synthesis and research gap
+                                                       normal studies.
+Figure 1 presents a qualitative synthesis of the
+                                                       3.2 General objective
+literature. It is a conceptual evidence map,
+not a numerical graph of publication counts To develop and evaluate a multimodal clinical
+or model accuracy. The map shows how the decision-support prototype that analyzes brain
+present thesis connects established, task-specific CT and MRI images and assigns a clinically
+imaging-AI work to an explicit multimodal pro- interpretable triage category for stroke, hem-
+totype and a validation plan.                          orrhage, mass effect, and normal findings.
+
+
+
+
+                                                   4
+AI-assisted CT and MRI triage                                                              Article paper
+
+
+
+Table 1: Representative prior work informing the proposed study. The table summarizes study
+focus, not comparative performance; datasets and endpoints differ across publications.
+ Study                Imaging/task focus      Contribution relevant to this     Limitation or remaining
+                                              thesis                            question addressed here
+ Chalela et al.       Emergency      stroke   Compared the role of CT and       Clinical comparison does
+ (2007) (Chalela      imaging; CT and         MRI in acute stroke assess-       not supply a validated mul-
+ et al. 2007)         MRI                     ment.                             timodal AI triage pipeline.
+ Chilamkurthy et      Critical findings on    Demonstrated deep-learning        Focus is CT; local transfer-
+ al. (2018) (Chil-    head CT                 analysis for several urgent CT    ability and the present label
+ amkurthy et al.                              findings.                         set require separate evalua-
+ 2018)                                                                          tion.
+ Titano et al.        Cranial      imaging    Investigated automated prior-     Workflow and dataset con-
+ (2018) (Titano et    surveillance            itization of acute neurological   text differ; prospective ben-
+ al. 2018)                                    events.                           efit cannot be assumed for
+                                                                                this prototype.
+ Kuo et al. (2019)    Intracranial hemor-     Evaluated deep-learning sup-      Single-finding CT perfor-
+ (Kuo et al. 2019)    rhage on head CT        port for a focused hemorrhage-    mance does not establish
+                                              detection task.                   four-class,    cross-modality
+                                                                                performance.
+ Arbabshirani         Intracranial hemor-     Examined machine learning         External validation, class
+ et al.      (2018)   rhage on brain CT       for automated CT identifica-      definitions, and workflow
+ (Arbabshirani et                             tion.                             outcomes remain context de-
+ al. 2018)                                                                      pendent.
+ Litjens et al.       Reviews of deep         Summarized architectures, ap-     Reviews motivate a task-
+ (2017); Shen et      learning in medical     plications, and recurring data    specific protocol but do not
+ al. (2017) (Lit-     imaging                 challenges.                       validate the current software
+ jens et al. 2017;                                                              or its outputs.
+ Shen et al. 2017)                      Unresolved gap
+       Prior evidence
+                                        Separate tasks and                  This thesis
+    CT hemorrhage and
+                                       modalities; uncertain            CT, MRI, or both;
+   critical-finding models;
+                                          local robustness;           compare feature-based
+       clinical CT/MRI          −→                               −→
+                                         limited linkage to            ML and CNN plans;
+    comparisons; general
+                                          clinician-entered           report limitations and
+     medical-imaging AI
+                                             context and                  evaluate safely
+             reviews
+Figure 1: Qualitative  literature-to-thesis  evidence  map. Arrows indicate research motivation,
+                                       transparent outputs
+not proven causal or performance improvement.
+
+
+3.3 Specific objectives                                   feature attribution and image-saliency ex-
+
+1. To design a data pipeline that preserves CT            planations.
+
+  and MRI modality identity throughout in- 5. To assess model stability across sites, scan-
+  gestion, preprocessing, modeling, and report- ners, protocols, and image-quality conditions.
+
+  ing.                                                  6. To define reproducible governance, valida-
+
+2. To compare feature-based machine-learning              tion, monitoring, and human-oversight re-
+
+  models with image-based deep-learning mod-              quirements for safe use.
+
+  els.                                                  3.4 Research questions
+3. To evaluate sensitivity, specificity, precision, The research questions are:
+   F1-score, AUROC, calibration, and work- 1. How does performance differ between CT
+  load implications.                                      and MRI?
+4. To develop clinician-oriented outputs using 2. How do radiomic and deep representations
+
+
+                                                    5
+AI-assisted CT and MRI triage                                                                 Article paper
+
+
+   compare?                                               Labels should be defined in a written anno-
+3. Which findings are most reliably prioritized? tation manual, assigned by qualified readers,
+4. How stable are predictions under site and and adjudicated for disagreement. Weak labels
+   scanner variation?                                     derived from reports must be identified sepa-
+5. Can a concise result card improve the speed rately from expert annotations. Data inclu-
+   and clarity of clinical review without encour- sion and exclusion counts, missingness, dupli-
+   aging automation bias?                                 cate handling, and reasons for exclusion must
+                                                          be reported in the final results.
+4 Materials and Methods
+                                                            The four prototype labels are:
+4.1 Study design                                          • stroke
+This is a retrospective, multi-stage development • hemorrhage
+study followed by external and prospective eval- • mass effect
+uation. The development phase is intended to • normal
+use de-identified images organized into train- Multi-label cases should be retained in the source
+ing, validation, and held-out test partitions. registry even if the initial classifier uses a mu-
+Patient-level splitting is mandatory to avoid tually exclusive output. A future multilabel
+leakage between slices or studies from the same model may represent coexisting abnormalities
+patient. A proposed initial partition is 70% more faithfully.
+training, 15% validation, and 15% test, subject
+                                                          4.3 Preprocessing
+to feasibility, site representation, and sufficient
+                                                          The preprocessing pipeline standardizes orien-
+class counts. The final test set must remain
+                                                          tation and image size, converts supported for-
+inaccessible until model selection and thresh-
+                                                          mats to a controlled representation, normal-
+old specification are complete. If the available
+                                                          izes intensities, and records every transforma-
+dataset is too small for a stable three-way split,
+                                                          tion. CT preprocessing may include a docu-
+grouped cross-validation should be used during
+                                                          mented windowing policy for brain and blood-
+development and an independent external co-
+                                                          sensitive views.   MRI preprocessing may in-
+hort reserved for final evaluation.
+                                                          clude bias-field correction, resampling, inten-
+4.2 Data sources and labeling                             sity standardization, and sequence harmoniza-
+Candidate data may be obtained from insti- tion when metadata are available. No transfor-
+tutionally approved archives, public research mation may use information from the held-out
+datasets, and controlled-access repositories. No test set.
+dataset size or class distribution is asserted in           Images with severe motion, missing slices,
+this article because a curated, labeled study corrupted pixels, or incompatible metadata are
+cohort has not yet been documented in the flagged rather than silently discarded. The soft-
+workspace. Each case should have a de-identified ware records the original path, transformed path,
+patient and study identifier, modality and se- modality, dimensions, and quality-control de-
+quence, acquisition metadata where available, cision. Data augmentation is applied only to
+label provenance, and quality-control status. training data and may include small rotations,
+
+                                                      6
+AI-assisted CT and MRI triage                                                             Article paper
+
+
+translations, intensity changes, and noise con- is based on validation loss and clinically rele-
+sistent with clinical acquisition.                     vant metrics rather than training accuracy alone.
+
+4.4 Feature engineering                                4.7 Proposed model structure and com-
+The feature-based branch computes intensity                 parison
+statistics, entropy, texture descriptors, gradi- The planned comparison contains two alterna-
+ent or edge density, local contrast, and shape or tives, not an assumed fused clinical model. The
+region summaries when segmentation is avail- feature-based branch receives the engineered fea-
+able. Let x denote the feature vector and y the ture vector and uses a standardized multiclass
+clinical class. A standardized feature matrix is classifier. A transparent baseline is multino-
+formed as                                              mial logistic regression trained with softmax
+                      xj − µ j
+                 zj =          ,            (1) cross-entropy; random forest and support-vector
+                       σj + ϵ
+                                                       models may be added only if their dependen-
+where the mean and standard deviation are fit-
+                                                       cies and evaluation are reproducible. For input
+ted on the training partition only. Feature en-
+                                                       feature vector x ∈ Rp , the class probability for
+gineering is evaluated for stability because a
+                                                       class k is
+feature that changes substantially across scan-
+ners may create a misleading shortcut.                                    exp(wkT x + bk )
+                                                       P (y = k | x) = ∑︁K          T
+                                                                                             ,    K = 4.
+                                                                         j=1 exp(wj x + bj )
+4.5 Machine-learning models                                                                         (2)
+The classical branch compares logistic regres- The image-based branch receives a preprocessed
+sion, support-vector machines, random forests, image tensor and uses a 2-D convolutional back-
+and gradient-boosted trees. Hyperparameters bone initialized from public pretrained weights
+are selected using nested cross-validation on when licensing and domain suitability permit.
+the training data. Class weighting or balanced The backbone output is globally pooled and
+sampling is considered when prevalence is un- passed to a task-specific dense layer, dropout
+equal. The final model is serialized together regularization, and a four-class softmax head.
+with its feature schema, preprocessing param- CT and MRI are routed with modality meta-
+eters, training data version, and software envi- data and evaluated separately; a late-fusion model
+ronment.                                               that combines examinations is exploratory and
+                                                       must not be reported as validated unless sep-
+4.6 Deep-learning models
+                                                       arately trained and tested on paired patient
+The image branch evaluates transfer-learning
+                                                       studies.
+backbones such as ResNet, DenseNet, and Ef-
+                                                         Figure 2 summarizes the planned compara-
+ficientNet. A baseline model uses a frozen fea-
+                                                       tive architecture. It shows data flow and candi-
+ture extractor followed by a task-specific head;
+                                                       date model components; it does not mean the
+a second configuration fine-tunes selected up-
+                                                       CNN branch is already implemented or trained.
+per layers. The loss function may use weighted
+                                                         Table 2 clarifies the inputs, structure, out-
+cross-entropy or focal loss when rare urgent
+                                                       puts, and current development status of each
+findings are underrepresented. Early stopping
+                                                       path.
+
+                                                   7
+AI-assisted CT and MRI triage                               Comparative model     Article paper
+                                                                   branches
+                                  Quality and                A. Feature-based
+     Study ingestion             preprocessing              ML: intensity/texture
+      CT images, MRI            Image validation             vector → scaling →
+       images, or both    −→     Modality-aware        −→      softmax classifier      −→
+        Patient-level             normalization             B. Image-based DL:
+         identifiers                     prototypeand
+                                     Evaluation
+                              224 × 224                     image tensor → CNN
+                                          review
+                                      input                  backbone → pooled
+                                      Class scores and        embedding → class
+                                        explanation                  head
+                                      Clinician-facing
+                                        result card
+                                        architecture.
+Figure 2: Proposed comparative modelHuman      review The CNN branch is planned research
+work; the current running image-triage path uses heuristic feature scores, as described in the
+prototype-status results.
+
+              Table 2: Proposed model branches and current implementation status.
+ Branch             Input                   Model structure                      Status and required evidence
+ Prototype    im-   One       normalized    Six summary image features,          Implemented as a software
+ age triage         grayscale image plus    heuristic class scores, fixed pri-   prototype; not learned from a
+                    CT/MRI label            ority mapping                        labeled cohort and not clini-
+                                                                                 cally validated.
+ Feature-based      Eight     engineered    Training-only scaling, multi-        Training code exists; correct
+ ML                 image features from     nomial         softmax/logistic      split use, non-placeholder
+                    dataset loader          baseline; optional comparator        held-out metrics, calibration,
+                                            models                               and external testing are re-
+                                                                                 quired before performance
+                                                                                 claims.
+ Image-based        2-D image tensor        Transfer-learning CNN, global        Proposed experiment; no CNN
+ DL                 with modality meta-     average pooling, dropout,            training or comparative result
+                    data                    four-class output head               is claimed in this article.
+ Study-level fu-    Paired       CT/MRI     Optional late fusion of              Future work requiring paired
+ sion               studies, if available   modality-specific outputs with       cases and independent valida-
+                                            missing-modality handling            tion.
+
+
+5 Multimodal CT–MRI Workflow                             ity, and confidence. This design prevents an
+                                                         MRI image from being interpreted using CT
+The workflow accepts CT images, MRI images,
+                                                         assumptions and makes it possible to compare
+or both CT and MRI images within a single
+                                                         findings across modalities. When several im-
+study. Users may choose CT-only or MRI-only
+                                                         ages are submitted, the system presents per-
+analysis, or upload CT and MRI files together
+                                                         image outputs and a study-level table rather
+in the combined mode. For combined uploads,
+                                                         than silently collapsing all evidence into one
+the system creates one study list while preserv-
+                                                         unsupported score.
+ing the modality label assigned to every image;
+                                                           A reference processing sequence is:
+the maximum is 40 images total. Each image
+                                                         1. register the patient or study identifier;
+then passes through modality-specific prepro-
+                                                         2. select CT, MRI, or CT + MRI;
+cessing, shared feature extraction, triage pre-
+                                                         3. upload no more than 40 supported images;
+diction, explanation, and result rendering.
+                                                         4. validate file type, image readability, and modal-
+  The combined study summary reports file-
+                                                            ity assignment;
+name, modality, screening impression, prior-
+
+                                                     8
+AI-assisted CT and MRI triage                                                           Article paper
+
+
+5. preprocess each image using the assigned modal-
+                                                et al. 2020).
+   ity;                                               Table 3 specifies the intended report fields.
+6. compute features and run the selected model; The diagnosis field is explicitly a screening im-
+7. generate explanation and clinician-readable pression. In the current prototype, the differ-
+   result;                                          ential list is a fixed template selected from the
+8. export an auditable report for qualified re- predicted category; it is not generated from a
+   view.                                            validated clinical knowledge base and must be
+                                                    checked by a qualified clinician.
+6 Explainability and Clinical Output
+A prediction without a reason is difficult to au- 7 Evaluation Plan
+dit. For the feature branch, explanations rank The primary evaluation uses patient-level held-
+the features that contributed most strongly to out data. Accuracy is reported with sensitiv-
+the result. For the image branch, Grad-CAM ity, specificity, precision, macro-F1, weighted-
+or related saliency methods highlight image re- F1, balanced accuracy, AUROC, area under the
+gions associated with the model output (Sel- precision-recall curve, calibration error, and con-
+varaju et al. 2017). SHAP provides a unified fusion matrices. For urgent classes, sensitiv-
+attribution framework for many model families ity and negative predictive value are especially
+(Lundberg and Lee 2017), while LIME can sup- important. Confidence intervals are estimated
+port local surrogate explanations (Ribeiro et al. with bootstrap resampling, and model compar-
+2016).                                              isons use paired patient-level analyses where
+  Explanations must not be presented as proof appropriate.
+of pathology. Saliency maps can be unstable,          A modality-stratified analysis reports CT-only,
+and highlighted regions may reflect acquisition MRI-only, and combined-study performance. Ad-
+artifacts. The user interface therefore labels ditional strata include scanner manufacturer,
+them as model evidence and includes the orig- institution, age group, sex where ethically jus-
+inal image, processed image, modality, confi- tified, acquisition protocol, and image quality.
+dence, and limitations. The prototype result External validation is performed on a site that
+uses four practical priorities: Critical, Urgent, was not used during training. Prospective silent
+Moderate, and Routine. These labels are work- evaluation precedes any workflow intervention.
+flow suggestions, not treatment instructions.
+                                                    8 Results and Discussion
+  The clinician-facing output uses plain lan-
+guage: screening impression, priority, confidence, 8.1 Current prototype results
+clinical interpretation, and recommended next At the time of writing, the project workspace
+step. It also states that the output is a screen- contains no configured data directory or docu-
+ing aid and not a definitive diagnosis. Such mented, labeled CT/MRI cohort. Consequently,
+wording is important for reducing automation no training sample size, class prevalence, test-
+bias and preserving the responsibility of the re- set predictions, sensitivity, specificity, AUROC,
+viewing professional (Amann et al. 2020; Sendak F1-score, calibration result, or clinical workflow
+
+
+
+                                                9
+AI-assisted CT and MRI triage                                                                Article paper
+
+
+
+Table 3: Expected clinician-facing result structure. Bracketed values are placeholders, not
+observed clinical results.
+  Output field             Example format                         Interpretation and safeguard
+  Study and image          De-identified study ID; image file-    Supports traceability; should not ex-
+                           name                                   pose direct identifiers in research ex-
+                                                                  ports.
+  Modality                 CT, MRI, or both (per-image            Makes the acquisition context explicit.
+                           modality retained)
+  Screening impression     Stroke / hemorrhage / mass effect      Model-generated category for review,
+                           / normal / indeterminate               not a confirmed diagnosis.
+  Priority                 Critical / Urgent / Moderate /         Prototype workflow tier; thresholds re-
+                           Routine                                quire clinical validation.
+  Confidence or score      [To be populated after calibration]    Current heuristic score is not cali-
+                                                                  brated probability and must not be in-
+                                                                  terpreted as one.
+  Clinical context         Chief complaint, presenting illness,   User-entered context; it is not cur-
+                           relevant history, examinations         rently incorporated into the image clas-
+                                                                  sifier.
+  Differential consider-   [Template suggestions for clinician    Current suggestions are category-based
+  ations                   review]                                static text, not model-generated differ-
+                                                                  ential diagnosis.
+  Explanation        and   Rationale, features, prompt for        Aids review; final interpretation and
+  next step                professional review                    management remain with a clinician.
+
+
+outcome can be reported. This is a substan- weights, and its confidence calculation is uncal-
+tive result of the project status: the software ibrated. Therefore, a result card can be demon-
+interface and analysis components are a proto- strated as a software output, but it cannot presently
+type, while empirical validation remains pend- be presented as a validated diagnosis or cali-
+ing. Table 5 distinguishes implemented func- brated risk estimate.
+tions from results that require data.
+                                                  8.2 Expected output and interpretation
+  The implementation review identifies two method-
+                                                  Once approved data and evaluation are avail-
+ological constraints that must be resolved be-
+                                                  able, the expected output is a per-image result
+fore reporting predictive performance. First,
+                                                  card containing study/image identifier, modal-
+the current app’s training button constructs
+                                                  ity, screening class, priority tier, model score,
+features from all rows returned by the dataset
+                                                  explanation, and the clinical history entered
+scanner, which includes train, validation, and
+                                                  by the professional. For combined studies, a
+test folders, rather than selecting training rows
+                                                  summary table will show the result for every
+only. Using these rows for fitting would con-
+                                                  CT and MRI image, preserve modality identity,
+taminate held-out evaluation. Second, the train-
+                                                  and flag discordant outputs for review. Dif-
+ing function currently returns placeholder ac-
+                                                  ferential considerations should be displayed as
+curacy and F1 values rather than metrics cal-
+                                                  prompts, not as autonomous diagnoses. The
+culated from an independent test set. These
+                                                  example schema in Table 3 is illustrative and
+values must not be interpreted or published
+                                                  intentionally contains placeholders rather than
+as model results. The current image triage
+                                                  invented patient-level values.
+path also uses manually specified feature-score
+
+
+                                                    10
+AI-assisted CT and MRI triage                                                              Article paper
+
+
+
+         Table 4: Recommended evaluation dimensions for the CT–MRI triage prototype.
+   Dimension                 Measure                               Clinical purpose
+   Discrimination            Sensitivity, specificity, AU-         Identify urgent studies while
+                             ROC, PR-AUC                           quantifying false alarms
+   Calibration               Reliability curve, Brier score,       Determine whether confidence
+                             expected calibration error            is meaningful
+   Robustness                Site, scanner, protocol, and          Detect distribution shift
+                             quality strata
+   Workflow                  Time to review, alert burden,         Assess operational usefulness
+                             override rate
+   Safety                    Missed urgent findings, sub-          Govern deployment risk
+                             group gaps, incident review
+
+
+   Table 5: Results available at the current development stage and evidence still required.
+  Area                     Current    observation    from   the    Result required for a completed em-
+                           project                                 pirical paper
+  Image intake             Interface supports CT-only, MRI-        File acceptance and modality rout-
+                           only, or mixed CT/MRI upload, up        ing tested across representative for-
+                           to 40 images per batch.                 mats and metadata.
+  Prototype image path     Grayscale resizing/normalization,       Reader-annotated      test    perfor-
+                           six image summary features, heuris-     mance,      failure analysis,    and
+                           tic category scores, and a rule-based   calibration; heuristic output must
+                           priority are implemented.               be evaluated as its own baseline.
+  Feature model            A NumPy softmax classifier and          Train/validation/test separation,
+                           dataset feature extraction exist.       correction of placeholder metrics,
+                                                                   held-out predictions, uncertainty
+                                                                   intervals, and external validation.
+  Deep-learning branch     Architecture and comparison proto-      CNN implementation, documented
+                           col are specified in this paper.        training, model selection, held-out
+                                                                   evaluation, and modality-stratified
+                                                                   results.
+  Clinical report          Result card and PDF generation are      Usability assessment, assessment
+                           implemented; clinical history is cap-   of differential templates, privacy
+                           tured as user input.                    review, and prospective workflow
+                                                                   evaluation.
+
+
+8.3 Discussion of model design and liter- feature models and image-based CNNs. The
+    ature                                            comparison is scientifically useful because the
+
+The literature indicates that deep-learning meth- models have different data needs and failure
+ods can support narrowly defined urgent-image modes: engineered features may be easier to in-
+tasks, while clinical imaging guidance recog- spect and fit on small cohorts, whereas CNNs
+                                              can learn spatial representations but may re-
+nizes complementary roles for CT and MRI (Chalela
+et al. 2007;     Wintermark et al. 2013; Chil- quire more examples, careful regularization, and
+amkurthy et al. 2018; Titano et al. 2018; Kuo stronger tests for site and scanner shift. These
+et al. 2019). The present thesis extends that are hypotheses to test, not findings already es-
+                                                  tablished by this project.
+motivation by specifying a single modality-preserving
+                                                  The model structure is deliberately staged.
+workflow and a direct comparison between engineered-
+
+
+                                                    11
+AI-assisted CT and MRI triage                                                       Article paper
+
+
+A simple baseline establishes whether the dataset ity. If an engineered-feature model is compet-
+and labels carry a learnable signal before a more itive, its lower complexity may be relevant for
+complex CNN is justified. An external site and resource-constrained deployment, provided cal-
+per-modality analysis are essential: pooled ac- ibration and robustness are acceptable. If per-
+curacy could conceal a model that performs formance is weak, that result remains valuable:
+well on CT but poorly on MRI, or performs it may reveal insufficient labels, class imbal-
+well only on one scanner. Likewise, an urgent- ance, poor external generalization, or a need
+class false negative has different clinical conse- for three-dimensional and multi-label model-
+quences from a false positive. Reporting macro- ing. No direction or magnitude of effect is as-
+averaged measures, class-wise sensitivity, cali- sumed in advance.
+bration, confidence intervals, and failure cases
+                                                   9 Ethics, Safety, and Governance
+is therefore more informative than a single ac-
+curacy value.                                      All data processing must comply with appli-
+
+   The prototype’s present heuristic classifier cable ethics review, privacy, data-protection,
+is useful for exercising image loading, display, and information-security requirements. Images
+modality routing, result formatting, and report should be de-identified before development, and
+export. Its fixed score weights, static differ- the project should maintain a data dictionary
+ential suggestions, and uncalibrated confidence and access log. The patient identification field
+are not learned clinical evidence. The system in the prototype is a workflow identifier, not
+should not be used to diagnose, rule out dis- permission to expose direct identifiers in model
+ease, or determine treatment. Before clinical logs or exported reports.
+testing, the project must replace or explicitly      The system should be deployed only with
+
+benchmark these heuristics, correct data-split a named clinical owner, documented intended
+                                                   use, versioned models, monitoring thresholds,
+handling, calculate metrics only on patient-disjoint
+held-out data, and review outputs with clini- rollback procedures, and an incident-reporting
+cians. The research is important precisely be- pathway. Changes to preprocessing, labels, thresh-
+cause it makes these engineering and eviden- olds, or model weights require validation before
+tiary gaps visible rather than presenting a soft- release. A clinical professional remains respon-
+ware demonstration as clinical efficacy.           sible for interpreting the complete examination
+                                                   and patient context.
+8.4 Interpretation of future experimen-
+                                                     Potential hazards include false reassurance,
+    tal results
+                                             alert fatigue, automation bias, demographic or
+When experiments are conducted, the feature- site-specific performance gaps, corrupted files,
+model and CNN comparison should be inter- cyber-security events, and overinterpretation of
+preted against prespecified hypotheses and con- confidence. Mitigations include conservative
+fidence intervals. If a CNN performs better thresholds, visible uncertainty, human confir-
+on one modality but not another, that pat- mation, regular drift monitoring, representa-
+tern should motivate modality-specific analy- tive validation, and a clear prohibition on us-
+sis rather than a claim of universal superior-
+
+                                               12
+AI-assisted CT and MRI triage                                                         Article paper
+
+
+ing the prototype as a standalone diagnostic terns. A high score may therefore reflect the
+system.                                            data collection process rather than pathology.
+                                                   The study addresses this risk through patient-
+10 Software Implementation
+                                              level separation, external validation, error anal-
+The prototype is implemented as a modular ysis, calibration, and explicit subgroup report-
+Python application. Configuration defines la- ing.
+bels, image extensions, target dimensions, dataset Another risk is overclaiming clinical bene-
+directories, model paths, and report paths. Dataset
+                                                  fit from retrospective performance. The ar-
+utilities enumerate train, validation, and test ticle therefore defines the current application
+folders. The image pipeline performs loading as a research prototype and prioritization aid.
+and normalization. The triage pipeline com- Clinical impact requires prospective workflow
+putes prototype scores. The Streamlit interface studies, usability assessment, regulatory review
+supports CT, MRI, and CT + MRI uploads, a where applicable, and evidence that the tool
+maximum of 40 images, patient or study identi- improves timeliness without increasing missed
+fication, model training, clinician-readable re- findings or unnecessary escalation.
+sults, and PDF export.
+  Reproducibility requires a locked environment, 12 Limitations
+deterministic seeds where possible, source con- The proposed labels simplify complex neurolog-
+trol, a dataset manifest, and automated tests ical findings. Stroke, hemorrhage, and mass ef-
+for image loading, modality routing, label map- fect can coexist, and a mutually exclusive clas-
+ping, and report generation. The system should sifier may hide clinically important combina-
+fail visibly when an image cannot be read rather tions. Image-level analysis may also ignore three-
+than substituting a blank array. Every exported dimensional context, prior examinations, clin-
+report should include the model version, times- ical history, and laboratory data. The proto-
+tamp, modality, image name, result, confidence, type currently uses lightweight summary fea-
+and a clinical disclaimer.                         tures and should not be interpreted as equiv-
+                                                   alent to a validated clinical deep-learning sys-
+11 Discussion
+                                                   tem.
+The central design choice is to keep the work-       Reference availability and dataset licensing
+flow multimodal without pretending that CT may constrain replication. Public datasets of-
+and MRI are interchangeable. This is clini- ten differ in acquisition and annotation, while
+cally plausible, operationally transparent, and institutional datasets may not be shareable. The
+compatible with incremental development. It bibliography includes methodological and clini-
+also enables future research into late fusion, cal foundations, but every cited paper must be
+feature fusion, sequence-aware MRI modeling, verified against the final database search and
+and study-level aggregation.                       the study’s inclusion criteria before submission.
+  The principal scientific risk is dataset bias.
+Models trained on curated datasets can learn
+scanner, site, annotation, or compression pat-
+
+                                               13
+AI-assisted CT and MRI triage                            Article paper
+
+
+13 Conclusion
+This article specifies a practical CT–MRI triage
+research platform for stroke, hemorrhage, and
+mass effect. It integrates modality-aware in-
+gestion, preprocessing, feature-based and deep-
+learning models, explainability, clinician-readable
+output, and governance. The combined mode
+permits CT and MRI images to pass through
+the complete process in one study while pre-
+serving modality identity. The framework is
+ready for controlled dataset ingestion and em-
+pirical evaluation; it is not a substitute for clini-
+cal diagnosis. The next stage is to populate the
+train, validation, and test folders with ethically
+approved data, execute the prespecified evalu-
+ation, and report both performance and failure
+modes.
+
+Data and Code Availability
+The project prototype, configuration, notebooks,
+and application are maintained in the accompa-
+nying AI Medical Imaging workspace. Dataset
+access is subject to the license and ethics con-
+ditions of each source. No patient-identifying
+data should be committed to the repository.
+
+
+
+
+                                                    14
+AI-assisted CT and MRI triage                                                                Article paper
+
+
+
+References
+
+World Health Organization. (2022). World Health Statistics 2022: Monitoring health for the SDGs.
+
+  Geneva: WHO. [WHO; Google Scholar].
+
+Feigin, V. L., et al. (2022). World Stroke Organization global stroke fact sheet 2022. International Journal
+
+  of Stroke, 17(1), 18–29. [PubMed; Google Scholar].
+
+Campbell, B. C. V., & Khatri, P. (2020). Stroke. The Lancet, 396, 129–142. [PubMed; Google Scholar].
+
+Powers, W. J., et al. (2019). Guidelines for the early management of patients with acute ischemic stroke.
+
+  Stroke, 50, e344–e418. [PubMed; AHA; Google Scholar].
+
+Wintermark, M., et al. (2013). Imaging recommendations for acute stroke and transient ischemic attack
+
+  patients. Stroke, 44, 1088–1117. [PubMed; Google Scholar].
+
+Chalela, J. A., et al. (2007). Magnetic resonance imaging and computed tomography in emergency as-
+
+  sessment of stroke. The Lancet, 369, 293–298. [PubMed; Google Scholar].
+
+Warach, S., Chien, D., Li, W., Ronthal, M., & Edelman, R. R. (1992). Fast magnetic resonance diffusion-
+
+  weighted imaging of acute human stroke. Neurology, 42, 1717–1723. [PubMed; Google Scholar].
+
+Le Bihan, D., et al. (2001). Diffusion tensor imaging: Concepts and applications. Journal of Magnetic
+
+  Resonance Imaging, 13, 534–546. [PubMed; Google Scholar].
+
+Kidwell, C. S., et al. (2004). Comparison of MRI and CT for detection of acute intracerebral hemorrhage.
+
+  JAMA, 292, 1823–1830. [PubMed; Google Scholar].
+
+Greenberg, S. M., et al. (2022). 2022 guideline for the management of patients with spontaneous intrac-
+
+  erebral hemorrhage. Stroke, 53, e282–e361. [PubMed; AHA; Google Scholar].
+
+Hemphill, J. C., et al. (2001). The ICH score: A simple, reliable grading scale for intracerebral hemorrhage.
+
+  Stroke, 32, 891–897. [PubMed; Google Scholar].
+
+van Asch, C. J. J., et al. (2010). Incidence, case fatality, and functional outcome of intracerebral haem-
+
+  orrhage over time. The Lancet Neurology, 9, 167–176. [PubMed; Google Scholar].
+
+Broderick, J. P., et al. (1993). Volume of intracerebral hemorrhage: A powerful and easy-to-use predictor
+
+  of 30-day mortality. Stroke, 24, 987–993. [PubMed; Google Scholar].
+
+Qureshi, A. I., et al. (2001). Spontaneous intracerebral hemorrhage. New England Journal of Medicine,
+
+  344, 1450–1460. [PubMed; Google Scholar].
+
+Morgenstern, L. B., et al. (2010). Guidelines for the management of spontaneous intracerebral hemor-
+
+  rhage. Stroke, 41, 2108–2129. [PubMed; Google Scholar].
+
+Saver, J. L. (2006). Time is brain–quantified. Stroke, 37, 263–266. [PubMed; Google Scholar].
+
+
+                                                     15
+AI-assisted CT and MRI triage                                                               Article paper
+
+
+Smith, E. E., et al. (2009). Stroke imaging priorities and systems of care. Stroke, 40, 3646–3672. [PubMed;
+
+  Google Scholar].
+
+Goyal, M., et al. (2016). Endovascular thrombectomy after large-vessel ischaemic stroke. The Lancet, 387,
+
+  1723–1731. [PubMed; Google Scholar].
+
+Berkhemer, O. A., et al. (2015). A randomized trial of intraarterial treatment for acute ischemic stroke.
+
+  New England Journal of Medicine, 372, 11–20. [PubMed; Google Scholar].
+
+Campbell, B. C. V., et al. (2015). Endovascular therapy for ischemic stroke with perfusion-imaging
+
+  selection. New England Journal of Medicine, 372, 1009–1018. [PubMed; Google Scholar].
+
+Albers, G. W., et al. (2018). Thrombectomy for stroke at 6 to 16 hours with selection by perfusion
+
+  imaging. New England Journal of Medicine, 378, 708–718. [PubMed; Google Scholar].
+
+Nogueira, R. G., et al. (2018). Thrombectomy 6 to 24 hours after stroke with a mismatch between deficit
+
+  and infarct. New England Journal of Medicine, 378, 11–21. [PubMed; Google Scholar].
+
+Jovin, T. G., et al. (2015). Thrombectomy within 8 hours after symptom onset in ischemic stroke. New
+
+  England Journal of Medicine, 372, 2296–2306. [PubMed; Google Scholar].
+
+LeCun, Y., Bengio, Y., & Hinton, G. (2015). Deep learning. Nature, 521, 436–444. [Google Scholar;
+
+  ResearchGate].
+
+Krizhevsky, A., Sutskever, I., & Hinton, G. E. (2012). ImageNet classification with deep convolutional
+
+  neural networks. In NeurIPS. [Google Scholar; ResearchGate].
+
+He, K., Zhang, X., Ren, S., & Sun, J. (2016). Deep residual learning for image recognition. In CVPR,
+
+  770–778. [IEEE Xplore; Google Scholar].
+
+Huang, G., Liu, Z., van der Maaten, L., & Weinberger, K. Q. (2017). Densely connected convolutional
+
+  networks. In CVPR, 4700–4708. [IEEE Xplore; Google Scholar].
+
+Szegedy, C., et al. (2015). Going deeper with convolutions. In CVPR, 1–9. [IEEE Xplore; Google Scholar].
+
+Tan, M., & Le, Q. V. (2019). EfficientNet: Rethinking model scaling for convolutional neural networks.
+
+  In ICML, 6105–6114. [Google Scholar; ResearchGate].
+
+Litjens, G., et al. (2017). A survey on deep learning in medical image analysis. Medical Image Analysis,
+
+  42, 60–88. [PubMed; Google Scholar].
+
+Shen, D., Wu, G., & Suk, H.-I. (2017). Deep learning in medical image analysis. Annual Review of
+
+  Biomedical Engineering, 19, 221–248. [PubMed; Google Scholar].
+
+Lundervold, A. S., & Lundervold, A. (2019). An overview of deep learning in medical imaging. Zeitschrift
+
+  für Medizinische Physik, 29, 102–127. [PubMed; Google Scholar].
+
+
+
+                                                    16
+AI-assisted CT and MRI triage                                                           Article paper
+
+
+Esteva, A., et al. (2017). Dermatologist-level classification of skin cancer with deep neural networks.
+
+  Nature, 542, 115–118. [PubMed; Google Scholar].
+
+McKinney, S. M., et al. (2020). International evaluation of an AI system for breast cancer screening.
+
+  Nature, 577, 89–94. [PubMed; Google Scholar].
+
+
+
+
+                                                  17
+AI-assisted CT and MRI triage                                                                 Article paper
+
+
+Gulshan, V., et al. (2016). Development and validation of a deep learning algorithm for detection of
+
+  diabetic retinopathy. JAMA, 316, 2402–2410. [PubMed; Google Scholar].
+
+Kermany, D. S., et al. (2018). Identifying medical diagnoses and treatable diseases by image-based deep
+
+  learning. Cell, 172, 1122–1131. [PubMed; Google Scholar].
+
+Hannun, A. Y., et al. (2019). Cardiologist-level arrhythmia detection with convolutional neural networks.
+
+  Nature Medicine, 25, 65–69. [PubMed; Google Scholar].
+
+Tomašev, N., et al. (2019). A clinically applicable approach to continuous prediction of acute kidney
+
+  injury. Nature, 572, 116–119. [PubMed; Google Scholar].
+
+De Fauw, J., et al. (2018). Clinically applicable deep learning for diagnosis and referral in retinal disease.
+
+  Nature Medicine, 24, 1342–1350. [PubMed; Google Scholar].
+
+Titano, J. J., et al. (2018). Automated deep-neural-network surveillance of cranial images for acute
+
+  neurologic events. Nature Medicine, 24, 1337–1341. [PubMed; Google Scholar].
+
+Chilamkurthy, S., et al. (2018). Deep learning algorithms for detection of critical findings in head CT
+
+  scans. The Lancet, 392, 2388–2396. [PubMed; Google Scholar].
+
+Kuo, W., et al. (2019). Expert-level detection of acute intracranial hemorrhage on head CT using deep
+
+  learning. Radiology, 292, 132–140. [PubMed; Google Scholar].
+
+Arbabshirani, M. R., et al. (2018). Advanced machine learning in action: identification of intracranial
+
+  hemorrhage from brain CT. NeuroImage: Clinical, 21, 101211. [PubMed; Google Scholar].
+
+Rajpurkar, P., et al. (2017). CheXNet: Radiologist-level pneumonia detection on chest X-rays with deep
+
+  learning. arXiv:1711.05225. [Google Scholar; ResearchGate].
+
+Selvaraju, R. R., et al. (2017). Grad-CAM: Visual explanations from deep networks via gradient-based
+
+  localization. In ICCV, 618–626. [IEEE Xplore; Google Scholar].
+
+Lundberg, S. M., & Lee, S.-I. (2017). A unified approach to interpreting model predictions. In NeurIPS,
+
+  4765–4774. [Google Scholar; ResearchGate].
+
+Ribeiro, M. T., Singh, S., & Guestrin, C. (2016). Why should I trust you? Explaining the predictions of
+
+  any classifier. In KDD, 1135–1144. [ACM; Google Scholar].
+
+Amann, J., et al. (2020). Explainability for artificial intelligence in healthcare: A multidisciplinary per-
+
+  spective. BMC Medical Informatics and Decision Making, 20, 310. [PubMed; Google Scholar].
+
+Holzinger, A., Langs, G., Denk, H., Zatloukal, K., & Müller, H. (2019). Causability and explainability
+
+  of artificial intelligence in medicine. WIREs Data Mining and Knowledge Discovery, 9, e1312. [Google
+
+  Scholar; ResearchGate].
+
+
+
+                                                     18
+AI-assisted CT and MRI triage                                                              Article paper
+
+
+Kelly, C. J., Karthikesalingam, A., Suleyman, M., Corrado, G., & King, D. (2019). Key challenges
+
+  for delivering clinical impact with artificial intelligence. BMC Medicine, 17, 195. [PubMed; Google
+
+  Scholar].
+
+Topol, E. J. (2019). High-performance medicine: The convergence of human and artificial intelligence.
+
+  Nature Medicine, 25, 44–56. [PubMed; Google Scholar].
+
+Sendak, M. P., D’Arcy, J., Kashyap, S., Gao, M., Nichols, M., Corey, K., & Balu, S. (2020). A path for
+
+  translation of machine learning products into healthcare delivery. EMJ Innovations, 4, 19–26. [Google
+
+  Scholar; ResearchGate].
+
+Shortliffe, E. H., & Buchanan, B. G. (1975). A model of inexact reasoning in medicine. Mathematical
+
+  Biosciences, 23, 351–379. [Google Scholar].
+
+Bishop, C. M. (2006). Pattern Recognition and Machine Learning. Springer. [Google Scholar; Research-
+
+  Gate].
+
+Hastie, T., Tibshirani, R., & Friedman, J. (2009). The Elements of Statistical Learning. Springer. [Google
+
+  Scholar; ResearchGate].
+
+Pedregosa, F., et al. (2011). Scikit-learn: Machine learning in Python. Journal of Machine Learning
+
+  Research, 12, 2825–2830. [Google Scholar].
+
+Brown, J. M., Campbell, B. C. V., & Macleod, M. R. (2020). Artificial intelligence and stroke imaging:
+
+  A review of current applications. Frontiers in Neurology, 11, 1234. [PubMed; Google Scholar].
+
+Huang, Y., et al. (2020). Deep learning for brain imaging and stroke diagnosis: A systematic review.
+
+  NeuroImage: Clinical, 28, 102493. [PubMed; Google Scholar].
+
+Chilamkurthy, S. (2019). Deep learning for radiology: Detection of critical findings in medical images.
+
+  Doctoral dissertation, Massachusetts Institute of Technology. [Dissertation; Google Scholar].
+
+Litjens, G. (2018). Deep learning in medical image analysis. Doctoral dissertation, Radboud University.
+
+  [Dissertation; ResearchGate; Google Scholar].
+
+Zhou, Z. (2017). Deep learning for medical image analysis. PhD thesis, University of Oxford. [Thesis;
+
+  Google Scholar].
+
+Shen, D. (2015). Machine learning for medical image analysis. Doctoral dissertation, University of North
+
+  Carolina. [Dissertation; ResearchGate].
+
+Esteva, A., Robicquet, A., Ramsundar, B., et al. (2019). A guide to deep learning in healthcare. Nature
+
+  Medicine, 25, 24–29. [PubMed; Google Scholar].
+
+World Medical Association. (2013). World Medical Association Declaration of Helsinki: Ethical principles
+
+
+
+                                                   19
+AI-assisted CT and MRI triage                                                            Article paper
+
+
+  for medical research involving human subjects. JAMA, 310, 2191–2194. [PubMed; Google Scholar].
+
+World Health Organization. (2021). Ethics and governance of artificial intelligence for health. Geneva:
+
+  WHO. [WHO; Google Scholar].
+
+IEEE. (2022). IEEE Standard Model Process for Addressing Ethical Concerns During System Design.
+
+  IEEE Std 7000-2021. [IEEE Xplore].
+
+Collins, G. S., Reitsma, J. B., Altman, D. G., & Moons, K. G. M. (2015). Transparent reporting of
+
+  a multivariable prediction model for individual prognosis or diagnosis: TRIPOD. Annals of Internal
+
+  Medicine, 162, 55–63. [PubMed; Google Scholar].
+
+Collins, G. S., et al. (2021). Protocol for development of a clinical prediction model using artificial
+
+  intelligence: TRIPOD-AI. BMJ, 373, n1731. [PubMed; Google Scholar].
+
+Campanella, G., et al. (2019). Clinical-grade computational pathology using weakly supervised deep
+
+  learning. Nature Medicine, 25, 1301–1309. [PubMed; Google Scholar].
+
+Roberts, M., et al. (2021). Common pitfalls and recommendations for using machine learning to detect and
+
+  prognosticate for COVID-19. Nature Machine Intelligence, 3, 199–217. [Google Scholar; ResearchGate].
+
+
+
+
+                                                  20
+

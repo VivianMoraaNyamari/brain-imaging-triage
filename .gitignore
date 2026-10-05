@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Virtual environments
+.venv/
+.venv312/
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Streamlit
+.streamlit/
+
+# Runtime / generated dirs
+temp_upload/
+reports/
+data/
+models/
+*.h5
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+*.bbl
+*.blg
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# VSCode
+.vscode/
+
+# Secrets / env files
+.env
+*.env
+secrets.toml
